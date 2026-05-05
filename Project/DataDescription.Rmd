@@ -1,0 +1,105 @@
+---
+title: "DataDescription"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(dplyr)
+
+## take a specific year 
+data_2014 <- read.csv("incomedata/ACSST1Y2014.S1901-Data.csv")
+metadata_2014 <- read.csv("incomedata/ACSST1Y2014.S1901-Column-Metadata.csv")
+data_2014
+metadata_2014
+```
+In the metadata: each row represents what each column in the actual data refers to in the actual data 
+
+
+```{r}
+#renaming colomns in data with metadata and adding a year 
+old_names <- metadata_2014$Column.Name
+new_names <- metadata_2014$Label
+data_2014cleaned <- data_2014
+names(data_2014cleaned) <- new_names
+data_2014cleaned$Year <- 2014
+data_2014cleaned
+names(data_2014cleaned)
+#note each colomn name is a code and should be matched 
+```
+Repeat this method for all the years 
+issues fixed:
+Each year data colomns are ordered differently so I matched the column name using the meta data then changed the labeling after each year data was matched to 2014 and added as a row to the main df.
+
+
+```{r}
+folder <- "incomedata"
+
+years <- c(2014:2019, 2021:2024)
+
+# read 2014 metadata
+metadata_2014 <- read.csv(paste0(folder, "/ACSST1Y2014.S1901-Column-Metadata.csv"))
+
+# use the column codes from 2014 as the standard order
+standard_names <- metadata_2014$Column.Name
+
+#function to read each years data and match their colomn codes to 2014 
+read_one_year <- function(year, folder, standard_names) {
+  
+  data_file <- paste0(folder, "/ACSST1Y", year, ".S1901-Data.csv")
+  
+  
+  data <- read.csv(data_file)
+  
+  # remove first row because it contains labels, not data
+  data <- data[-1, ]
+  
+  # keep only columns that match 2014 column codes
+  data <- data[, standard_names]
+  
+  # add year column
+  data$Year <- year
+  
+  return(data)
+}
+
+```
+```{r}
+#now read every year 
+data_list <- list()
+
+for (i in 1:length(years)) {
+  data_list[[i]] <- read_one_year(years[i], folder, standard_names)
+}
+
+# remove missing years if any
+data_list <- data_list[!sapply(data_list, is.null)]
+```
+
+```{r}
+#how hopefully the merging works - lol this took so long 
+income_all <- data_list[[1]]
+
+for (i in 2:length(data_list)) {
+  income_all <- rbind(income_all, data_list[[i]])
+}
+income_all
+#finally this worked!!!!!
+```
+```{r}
+# Now rename the code names using the 2014 metadata labels
+
+new_names <- metadata_2014$Label
+
+names(income_all)[1:length(new_names)] <- new_names
+
+income_all
+
+```
+checking consistency 
+```{r}
+nrow(income_all)
+income_all$Year
+```
+
