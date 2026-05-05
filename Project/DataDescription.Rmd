@@ -26,7 +26,7 @@ head(metadata_2014)
 
 In the metadata: each row represents what each column in the actual data refers to. Column codes (like S1901_C01_001E) are matched with their descriptive labels from the metadata.
 
-finally found issue - Each year's data has columns ordered differently. The solution is to match column codes using the metadata, then rename using the descriptive labels. This standardization ensures consistency when combining data from multiple years.
+finally found issue - Each year's data has columns ordered differently. The solution is to match column codes using the metadata, then rename using the descriptive labels. 
 
 ```{r}
 # Examine the structure more closely
@@ -100,7 +100,6 @@ data_list <- list()
 
 # Read each year's data
 for (i in 1:length(years)) {
-  cat("Processing year", years[i], "\n")
   data_list[[i]] <- read_one_year(years[i], folder, standard_names)
 }
 
