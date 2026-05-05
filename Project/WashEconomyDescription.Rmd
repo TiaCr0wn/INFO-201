@@ -1,12 +1,11 @@
 ---
-title: "Income Data Description"
+title: "Washington Economy Data Description"
 output: html_document
 ---
 
-# Income Data Processing
+# Washington Economy Data Processing
 
-This script processes income data (ACSST1Y - ACS Selected Economic Characteristics) for each year from 2014-2024, merges all years into a single dataframe where each row represents a year's worth of data, and renames columns using metadata labels.
-
+This script processes the Washington State economy data (ACSDP1Y - ACS Data Profile) for each year from 2014-2024, merges all years into a single dataframe where each row represents a year's worth of data, and renames columns using metadata labels.
 
 
 ```{r}
@@ -14,8 +13,8 @@ library(tidyverse)
 library(dplyr)
 
 ## Load a specific year to understand the structure
-data_2014 <- read.csv("incomedata/ACSST1Y2014.S1901-Data.csv")
-metadata_2014 <- read.csv("incomedata/ACSST1Y2014.S1901-Column-Metadata.csv")
+data_2014 <- read.csv("../Wash_Economy_data/ACSDP1Y2014.DP03-Data.csv")
+metadata_2014 <- read.csv("../Wash_Economy_data/ACSDP1Y2014.DP03-Column-Metadata.csv")
 
 # Display the data and metadata structure
 head(data_2014)
@@ -24,9 +23,9 @@ head(metadata_2014)
 
 ## Understanding the Data Structure
 
-In the metadata: each row represents what each column in the actual data refers to. Column codes (like S1901_C01_001E) are matched with their descriptive labels from the metadata.
+In the metadata: each row represents what each column in the actual data refers to. The column codes (like DP03_0001E) are matched with their descriptive labels.
 
-finally found issue - Each year's data has columns ordered differently. The solution is to match column codes using the metadata, then rename using the descriptive labels. This standardization ensures consistency when combining data from multiple years.
+like the income data, the first row here contains labels (already descriptive), not codes. The actual data starts from the second row.
 
 ```{r}
 # Examine the structure more closely
@@ -41,16 +40,16 @@ Define the folder path, years available, and read the 2014 metadata to establish
 
 ```{r}
 # Define folder path
-folder <- "incomedata"
+folder <- "../Wash_Economy_data"
 
 # Define years to process (note: 2020 is missing in the data)
 years <- c(2014:2019, 2021:2024)
 
-# reading and using 2014 metadata to label final df columns 
-metadata_2014 <- read.csv(paste0(folder, "/ACSST1Y2014.S1901-Column-Metadata.csv"))
+# Read 2014 metadata to find correlating labels for each column
+metadata_2014 <- read.csv(paste0(folder, "/ACSDP1Y2014.DP03-Column-Metadata.csv"))
 
 # Use the column codes from 2014 as the standard order
-# These are codes like S1901_C01_001E, S1901_C01_001M, etc.
+
 standard_names <- metadata_2014$Column.Name
 
 # Display the standard column structure
@@ -59,19 +58,19 @@ head(standard_names)
 
 ## Create Function to Read and Process Each Year
 
-This function reads each year's data, removes the label row (first row), keeps only columns matching 2014's structure, and adds a Year column for tracking temporal changes.
+This function reads each year's data, removes the label row (first row), keeps only columns matching 2014's structure, reorders them to match 2014, and adds a Year column.
 
 ```{r}
 # Function to read each year's data and standardize its structure
 read_one_year <- function(year, folder, standard_names) {
   
   # Construct file path
-  data_file <- paste0(folder, "/ACSST1Y", year, ".S1901-Data.csv")
+  data_file <- paste0(folder, "/ACSDP1Y", year, ".DP03-Data.csv")
   
   # Read the data
   data <- read.csv(data_file)
   
-  # Remove first row (it contains labels, not actual data values)
+  # Remove first row (it contains labels/descriptive names, not actual data values)
   data <- data[-1, ]
   
   # Keep only columns that match 2014 column codes (standardize to 2014 structure)
@@ -104,11 +103,10 @@ for (i in 1:length(years)) {
   data_list[[i]] <- read_one_year(years[i], folder, standard_names)
 }
 
-# Remove any null entries (in case a year is missing)
+# Remove any null entries (in case a year is missing like 2020)
 data_list <- data_list[!sapply(data_list, is.null)]
 
-# Check how many years were successfully loaded
-length(data_list)
+
 ```
 
 ## Merge All Years into Single Dataframe
@@ -117,53 +115,53 @@ Combine all yearly data by binding rows together. Each row now represents one ye
 
 ```{r}
 # Start with the first year
-income_all <- data_list[[1]]
+econ_all <- data_list[[1]]
 
 # Bind remaining years
 for (i in 2:length(data_list)) {
-  income_all <- rbind(income_all, data_list[[i]])
+  econ_all <- rbind(econ_all, data_list[[i]])
 }
 
 # Verify the merge
-cat("Total rows (years):", nrow(income_all), "\n")
-cat("Unique years:", length(unique(income_all$Year)), "\n")
-cat("Years included:", sort(unique(income_all$Year)), "\n")
+cat("Total rows (years):", nrow(econ_all), "\n")
+cat("Unique years:", length(unique(econ_all$Year)), "\n")
+cat("Years included:", sort(unique(econ_all$Year)), "\n")
 ```
 
 ## Rename Columns Using Metadata Labels
 
-Replace the column codes (e.g., S1901_C01_001E) with their descriptive labels from the metadata.
+Replace the column codes (e.g., DP03_0001E) with their descriptive labels from the metadata.
 
 ```{r}
 # Extract labels from metadata
 new_names <- metadata_2014$Label
 
 # Rename columns (first n columns are the data columns, last column is Year)
-names(income_all)[1:length(new_names)] <- new_names
+names(econ_all)[1:length(new_names)] <- new_names
 
 # Display the renamed structure
-head(income_all)
-names(income_all)[1:10]  # Show first 10 column names
+head(econ_all)
+names(econ_all)[1:10]  # Show first 10 column names
 ```
 
 ## Data Validation and Summary
 
 ```{r}
 # Check data consistency
-cat("Dataframe dimensions:", nrow(income_all), "rows x", ncol(income_all), "columns\n")
-cat("Years in data:", table(income_all$Year), "\n")
+cat("Dataframe dimensions:", nrow(econ_all), "rows x", ncol(econ_all), "columns\n")
+cat("Years in data:", table(econ_all$Year), "\n")
 
 # Display column names
-cat("Total columns:", ncol(income_all), "\n")
-head(names(income_all), 20)
+cat("Total columns:", ncol(econ_all), "\n")
+head(names(econ_all), 20)
 
 # Display basic data
-head(income_all)
+head(econ_all)
 ```
 
 ## Final Processed Dataset
 
-The `income_all` dataframe is now ready for analysis. It contains:
+The `econ_all` dataframe is now ready for analysis. It contains:
 - All years from 2014-2019 and 2021-2024 (2020 not available)
 - One row per year of data
 - Column names are descriptive labels instead of codes
@@ -171,6 +169,5 @@ The `income_all` dataframe is now ready for analysis. It contains:
 
 ```{r}
 # View summary of the processed data
-summary(income_all[, c(1, 2, ncol(income_all))])
+summary(econ_all[, c(1, 2, ncol(econ_all))])
 ```
-
